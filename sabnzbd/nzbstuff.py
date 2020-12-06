@@ -85,11 +85,11 @@ import sabnzbd.cfg as cfg
 import sabnzbd.nzbparser
 from sabnzbd.downloader import Server
 from sabnzbd.database import HistoryDB
-from sabnzbd.deobfuscate_filenames import *
+from sabnzbd.deobfuscate_filenames import is_probably_obfuscated
 
 # Name patterns
-SUBJECT_FN_MATCHER = re.compile(r'"([^"]*)"')
-RE_NORMAL_NAME = re.compile(r"\.\w{1,5}$")  # Test reasonably sized extension at the end
+RE_SUBJECT_FILENAME_QUOTES = re.compile(r'"([^"]*)"')
+RE_SUBJECT_BASIC_FILENAME = re.compile(r"([\w\-+\(\)\s.]*\.\w{2,4})")
 RE_RAR = re.compile(r"(\.rar|\.r\d\d|\.s\d\d|\.t\d\d|\.u\d\d|\.v\d\d)$", re.I)
 RE_PROPER = re.compile(r"(^|[\. _-])(PROPER|REAL|REPACK)([\. _-]|$)")
 
@@ -2128,10 +2128,20 @@ def scan_password(name: str) -> Tuple[str, Optional[str]]:
 def name_extractor(subject: str) -> str:
     """ Try to extract a file name from a subject line, return `subject` if in doubt """
     result = subject
-    for name in re.findall(SUBJECT_FN_MATCHER, subject):
+    # Filename nicely wrapped in quotes
+    for name in re.findall(RE_SUBJECT_FILENAME_QUOTES, subject):
         name = name.strip(' "')
-        if name and RE_NORMAL_NAME.search(name):
+        if name:
             result = name
+
+    # Found nothing? Try a basic filename-like search
+    if result == subject:
+        for name in re.findall(RE_SUBJECT_BASIC_FILENAME, subject):
+            name = name.strip()
+            if name:
+                result = name
+
+    # Return the subject
     return result
 
 
